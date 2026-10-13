@@ -27,7 +27,9 @@ import pwd
 import grp
 import re
 import shutil
+import smtplib
 import socket
+import ssl
 import stat
 import statistics
 import subprocess
@@ -51,6 +53,10 @@ DEFAULTS = {
     "state_file": "/var/lib/vm-guardian/state.json",
     "mail_to": "",                          # кому писати; задається в setup
     "mail_from": "vm-guardian@" + socket.getfqdn(),
+    "smtp_host": "",                        # якщо задано - листи йдуть через цей SMTP, а не локальний sendmail
+    "smtp_port": 587,                       # 465 = TLS одразу, інакше STARTTLS (якщо сервер уміє)
+    "smtp_user": "",
+    "smtp_password_file": "/etc/vm-guardian/smtp.password",
     "mail_cooldown_h": 24,                  # однакові листи не частіше
     "interval_s": 60,
     "dry_run": False,                       # True -> нічого не міняти, лише логувати
@@ -257,16 +263,40 @@ class Guardian:
         m.set_content(body + f"\n\n-- \nvm-guardian на {host}, {utcnow():%Y-%m-%d %H:%M} UTC\n")
         log(f"MAIL -> {self.cfg['mail_to']}: {subject}\n" + "\n".join("  | " + l for l in body.splitlines()))
         try:
-            p = subprocess.run(["/usr/sbin/sendmail", "-t", "-oi", "-f", self.cfg["mail_from"]],
-                               input=m.as_bytes(), timeout=60)
-            ok = p.returncode == 0
-        except (OSError, subprocess.TimeoutExpired) as e:
-            log("sendmail failed:", e)
+            if self.cfg["smtp_host"]:
+                self.smtp_send(m)
+                ok = True
+            else:
+                p = subprocess.run(["/usr/sbin/sendmail", "-t", "-oi", "-f", self.cfg["mail_from"]],
+                                   input=m.as_bytes(), timeout=60)
+                ok = p.returncode == 0
+        except FileNotFoundError:
+            log("лист НЕ надіслано: на машині немає sendmail; задай smtp_host у", CONFIG_PATH)
+            ok = False
+        except (OSError, subprocess.TimeoutExpired, smtplib.SMTPException) as e:
+            log("mail failed:", e)
             ok = False
         if ok and key:
             self.state["mail_sent"][key] = now
             self.save()
         return ok
+
+    def smtp_send(self, m):
+        cfg = self.cfg
+        ctx = ssl.create_default_context()
+        if cfg["smtp_port"] == 465:
+            srv = smtplib.SMTP_SSL(cfg["smtp_host"], 465, timeout=60, context=ctx)
+        else:
+            srv = smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=60)
+        with srv:
+            srv.ehlo()
+            if cfg["smtp_port"] != 465 and srv.has_extn("starttls"):
+                srv.starttls(context=ctx)
+                srv.ehlo()
+            if cfg["smtp_user"]:
+                with open(cfg["smtp_password_file"]) as f:
+                    srv.login(cfg["smtp_user"], f.read().strip())
+            srv.send_message(m)
 
     # ---------- local metrics
 
@@ -689,8 +719,11 @@ class Guardian:
         st = self.state
         if not st["pending"] or st["in_progress"] or st["halted"]:
             return
+        # Fiberax сам перезапускає ВМ під час зміни, тож демона може бути вбито посеред запиту:
+        # розпочате (є target) доводимо до кінця одразу, не чекаючи наступної тихої години
+        started = any(p.get("target") for p in st["pending"].values())
         hour, _ = self.quiet_hour()
-        if utcnow().hour != hour:
+        if utcnow().hour != hour and not started:
             return
         if self.cfg["dry_run"]:
             log("dry_run: would apply", st["pending"])
@@ -706,19 +739,24 @@ class Guardian:
             p = st["pending"].get(kind)
             if not p:
                 continue
-            new_value = srv[kind] + p["step"]
+            new_value = p.get("target") or srv[kind] + p["step"]
+            old_value = new_value - p["step"]
             try:
-                ok, why = self.feasible(info, kind, new_value)
-                if not ok:
-                    raise ApiError(0, {"title": why})
-                p.setdefault("idem", str(uuid.uuid4()))
-                self.save()
-                r = self.api.call("PATCH", f"/servers/{sid}", body={kind: new_value}, idem=p["idem"])
-                self.api.wait_task(r.get("task"))
+                if srv[kind] < new_value:                   # інакше зміну вже застосовано до перезапуску
+                    ok, why = self.feasible(info, kind, new_value)
+                    if not ok:
+                        raise ApiError(0, {"title": why})
+                    p.setdefault("idem", str(uuid.uuid4()))
+                    p["target"] = new_value
+                    p["guest_mem_mb"] = self.meminfo()["MemTotal"] // MB
+                    self.save()
+                    r = self.api.call("PATCH", f"/servers/{sid}", body={kind: new_value}, idem=p["idem"])
+                    self.api.wait_task(r.get("task"))
             except ApiError as e:
                 if e.status in (409, 429, 500, 503) and time.time() - p["ts"] < 3 * 86400:
                     log(f"resize {kind} temporarily refused ({e}), will retry")
                     p.pop("idem", None)
+                    p.pop("target", None)
                     continue
                 del st["pending"][kind]
                 self.save()
@@ -726,12 +764,13 @@ class Guardian:
                 continue
             del st["pending"][kind]
             st["added_eur"] += p["delta_eur"]
-            rec = {"ts": time.time(), "kind": kind, "old": srv[kind], "new": new_value, "delta_eur": p["delta_eur"],
+            rec = {"ts": time.time(), "kind": kind, "old": old_value, "new": new_value, "delta_eur": p["delta_eur"],
+                   "guest_mem_mb": p.get("guest_mem_mb"),
                    "reason": p["reason"]}
             st["resizes"].append(rec)
             done.append(rec)
             self.save()
-            log(f"resized {kind}: {srv[kind]} -> {new_value}")
+            log(f"resized {kind}: {old_value} -> {new_value}")
         if not done:
             return
         st["in_progress"] = {"changes": done, "reboots": 0, "ts": time.time()}
@@ -744,7 +783,10 @@ class Guardian:
         for c in changes:
             if c["kind"] == "cores" and os.cpu_count() < c["new"]:
                 missing.append(f"ядер {os.cpu_count()} замість {c['new']}")
-            if c["kind"] == "memory_mb" and self.meminfo()["MemTotal"] / MB < c["new"] * 0.92:
+            # ядро частину пам'яті резервує (на RHEL-подібних ~20% під crashkernel), тому дивимось на приріст
+            seen = self.meminfo()["MemTotal"] / MB
+            grew = seen - c["guest_mem_mb"] >= (c["new"] - c["old"]) * 0.7 if c.get("guest_mem_mb") else seen >= c["new"] * 0.75
+            if c["kind"] == "memory_mb" and not grew:
                 missing.append(f"пам'яті {self.meminfo()['MemTotal'] // MB} МБ замість {c['new']}")
             if c["kind"] == "disk_gb":
                 self.grow_fs()
@@ -1063,6 +1105,8 @@ class Guardian:
     @staticmethod
     def is_text_log(path):
         """Справжній текстовий лог, а не бінарний журнал транзакцій БД з розширенням .log."""
+        if os.path.basename(path) == "current":            # runit/svlogd (GitLab) ротує такі файли сам
+            return False
         try:
             with open(path, "rb") as f:
                 chunk = f.read(8192)
@@ -1143,9 +1187,11 @@ class Guardian:
                 f.write(body)
             os.chmod(conf, 0o644)
             rc, out = run(["logrotate", "-d", conf])
-            if rc != 0 or "error:" in out:
+            # на свіжій RHEL-подібній системі файла стану ще немає - це не помилка нашого конфігу
+            errs = [l for l in out.splitlines() if "error:" in l and "state file" not in l]
+            if errs or (rc != 0 and "state file" not in out):
                 os.unlink(conf)
-                err = " | ".join(l for l in out.splitlines() if "error" in l)[-300:] or out.strip()[-300:]
+                err = " | ".join(errs)[-300:] or out.strip()[-300:]
                 report.append(f"НЕ вдалося додати в logrotate {pattern}: {err}")
                 continue
             before = self.disk()["free"]

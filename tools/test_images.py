@@ -190,12 +190,15 @@ def resize_test(api, ssh, sid, args):
     guest = ("python3 -c \"import sys,os,json; sys.path.insert(0,'/opt/vm-guardian-test'); import vm_guardian as vg; "
              "vg.CONFIG_PATH='/nonexistent'; vg.log=lambda *a: None; g=vg.Guardian(); g.grow_fs(); "
              "print(json.dumps({'cores': os.cpu_count(), 'mem_mb': g.meminfo()['MemTotal']//1048576, "
-             "'fs_gb': round(g.disk()['total']/2**30, 2), 'uptime_s': float(open('/proc/uptime').read().split()[0])}))\"")
+             "'fs_gb': round(g.disk()['total']/2**30, 2), 'uptime_s': float(open('/proc/uptime').read().split()[0])}))\"; "
+             "echo; journalctl -b -1 -n 4 --no-pager -o cat 2>&1 | sed 's/^/PREV: /'")
 
     def view():
         rc, out = ssh.run(guest, timeout=300)
         try:
-            return json.loads(out[out.rindex("{"):])
+            v = json.loads(out[out.rindex("{"):out.rindex("}") + 1])
+            v["prev_boot_tail"] = [l[6:] for l in out.splitlines() if l.startswith("PREV: ")]   # чи було вимкнення чистим
+            return v
         except ValueError:
             return {"error": out[-300:]}
 
@@ -208,7 +211,11 @@ def resize_test(api, ssh, sid, args):
         t = time.time()
         try:
             api.wait(api.call("PATCH", f"/servers/{sid}", {kind: res["before_api"][kind] + step}), timeout=900)
-            res["steps"].append({"change": f"{kind} +{step}", "task_s": round(time.time() - t), "api": server(), "guest_without_reboot": view()})
+            task_s = round(time.time() - t)
+            time.sleep(20)
+            ssh.wait(900)           # сама зміна перезапускає ВМ - чекаємо, поки вона повернеться
+            res["steps"].append({"change": f"{kind} +{step}", "task_s": task_s, "back_s": round(time.time() - t),
+                                 "api": server(), "guest_after_change": view()})
         except RuntimeError as e:
             res["steps"].append({"change": f"{kind} +{step}", "error": str(e)[-400:]})
     t = time.time()

@@ -614,9 +614,9 @@
    ],
    "detect": {
     "paths": [
-     "/usr/share/xsessions",
-     "/usr/share/wayland-sessions",
-     "/etc/xrdp"
+     "/usr/share/xsessions/*.desktop",
+     "/usr/share/wayland-sessions/*.desktop",
+     "/etc/xrdp/xrdp.ini"
     ]
    },
    "data": [
@@ -799,6 +799,7 @@
    ],
    "detect": {
     "paths": [
+     "/var/lib/pufferpanel",
      "/home/*/serverfiles/game/csgo",
      "/home/steam",
      "/opt/cs2*",
@@ -809,12 +810,18 @@
      "cs2",
      "pterodactyl",
      "joedwards32/cs2"
+    ],
+    "units": [
+     "pufferpanel.service"
     ]
    },
    "data": [
+    "/var/lib/pufferpanel/servers",
     "/var/lib/pterodactyl/volumes"
    ],
    "logs": [
+    "/var/log/pufferpanel/*.log",
+    "/var/lib/pufferpanel/servers/*/game/csgo/logs/*.log",
     "/home/*/log/*/*.log",
     "/home/*/serverfiles/game/csgo/logs/*.log",
     "/home/*/log/console/*.log",
@@ -867,12 +874,14 @@
     ]
    },
    "data": [
+    "/opt/crafty*/crafty-4/servers",
     "/var/opt/minecraft/crafty/crafty-4/servers",
     "/var/opt/minecraft/server",
     "/opt/crafty*/servers",
     "/opt/minecraft*"
    ],
    "logs": [
+    "/opt/crafty*/crafty-4/logs/*.log",
     "/var/opt/minecraft/crafty/crafty-4/logs/*.log",
     "/opt/crafty*/logs/*.log"
    ],
@@ -891,6 +900,7 @@
     }
    ],
    "backups": [
+    "/opt/crafty*/crafty-4/backups",
     "/var/opt/minecraft/crafty/crafty-4/backups",
     "/opt/crafty*/backups"
    ],

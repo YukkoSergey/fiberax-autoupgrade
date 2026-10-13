@@ -77,6 +77,21 @@ step("sample", lambda: g.sample())
 step("disk", lambda: g.disk())
 
 
+def install_logrotate():
+    """Те саме, що робить install.sh: на чистих образах logrotate немає."""
+    if shutil.which("logrotate"):
+        return "вже є"
+    for cmd in ("apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq logrotate",
+                "dnf install -y -q logrotate", "yum install -y -q logrotate"):
+        if shutil.which(cmd.split()[0]):
+            res = sh(cmd, timeout=600)
+            return "встановлено" if shutil.which("logrotate") else f"НЕ встановлено: {str(res)[-300:]}"
+    return "немає пакетного менеджера"
+
+
+step("install_logrotate", install_logrotate)
+
+
 def real_logrotate():
     """Справжня ротація підробленого лога: чи працює наш конфіг logrotate на цьому дистрибутиві."""
     os.makedirs("/opt/vmg-fakeapp/logs", exist_ok=True)
