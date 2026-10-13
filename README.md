@@ -115,6 +115,24 @@ cd fiberax-autoupgrade
 
 Перевірено на Debian 13 (ext4, Docker, k3s).
 
+## Перевірка на образах
+
+`tools/test_images.py` розгортає сервер з кожного Linux-образу каталогу (чисті ОС і маркетплейс), запускає на ньому
+`tools/remote_probe.py` і видаляє сервер. Перевіряється: чи працює скрипт на цьому дистрибутиві, чи розпізнається
+софт образу і чи збігаються шляхи профілю з реальними, справжня ротація підробленого лога, справжнє чищення кешів;
+з `--resize` — ще й справжнє збільшення диска, пам'яті та ядер через API з перезавантаженням.
+
+**Створює платні сервери й адреси.** Видаляє лише те, що створив сам (список у `<out>/created.json`).
+API-токен на тестові сервери не копіюється.
+
+```sh
+python3 tools/test_images.py --token /etc/vm-guardian/fiberax.token --out /root/vmg-test \
+    --images "Debian 13" --resize "Debian 13"          # один образ, для початку
+python3 tools/test_images.py --token /etc/vm-guardian/fiberax.token --out /root/vmg-test --only os
+python3 tools/test_images.py --token /etc/vm-guardian/fiberax.token --out /root/vmg-test --only marketplace
+python3 tools/test_images.py --token /etc/vm-guardian/fiberax.token --out /root/vmg-test --cleanup   # якщо щось лишилось
+```
+
 ## Далі
 
 План перенесення цієї логіки назовні, на бік платформи (Proxmox + qemu-guest-agent):
