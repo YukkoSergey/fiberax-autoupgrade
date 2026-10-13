@@ -1156,6 +1156,11 @@ class Guardian:
 
     # --- caches
 
+    @staticmethod
+    def inside(path, parent):
+        parent = parent.rstrip("/")
+        return path == parent or path.startswith(parent + "/")
+
     def find_caches(self, inv=None):
         """Теки-кеші: з профілів відомого софту, за ознаками (назва cache/tmp/..., файл CACHEDIR.TAG) і з конфігу.
         Повертає {тека: (ознака, вік_у_днях)}. Сховища контейнерів, системні теки й дозволені дані за ознаками не чіпаємо."""
@@ -1246,7 +1251,7 @@ class Guardian:
             n, cutoff = 0, time.time() - age * 86400
             for dp, dns, fns in os.walk(d):
                 dns[:] = [x for x in dns if not os.path.ismount(os.path.join(dp, x))
-                          and not (os.path.join(dp, x).startswith(protected) and not d.startswith(protected))]
+                          and not any(self.inside(os.path.join(dp, x), pr) and not self.inside(d, pr) for pr in protected)]
                 for fn in fns:
                     p = os.path.join(dp, fn)
                     try:
