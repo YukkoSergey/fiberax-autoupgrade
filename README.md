@@ -74,3 +74,8 @@ cd fiberax-autoupgrade
 - не розрізняє навантаження CPU від очікування диска чи steal.
 
 Перевірено на Debian 13 (ext4, Docker, k3s).
+
+## Далі
+
+План перенесення цієї логіки назовні, на бік платформи (Proxmox + qemu-guest-agent):
+[docs/PLAN-external-controller.md](docs/PLAN-external-controller.md).
