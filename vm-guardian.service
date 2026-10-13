@@ -1,0 +1,14 @@
+[Unit]
+Description=vm-guardian: resource watchdog with Fiberax auto-scaling
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u /opt/vm-guardian/vm_guardian.py run
+Restart=always
+RestartSec=15
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

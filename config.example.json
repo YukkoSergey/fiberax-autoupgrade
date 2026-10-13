@@ -1,0 +1,12 @@
+{
+  "mail_to": "you@example.com",
+  "disk_used_pct": 85,
+  "disk_min_free_gb": 6,
+  "disk_step_gb": 1,
+  "mem_avail_pct": 10,
+  "mem_psi_pct": 10,
+  "cpu_busy_pct": 85,
+  "quiet_hour_utc": null,
+  "grow_paths": [],
+  "dry_run": false
+}
