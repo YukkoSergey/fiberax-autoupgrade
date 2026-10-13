@@ -1320,7 +1320,7 @@ class Guardian:
         details = f"{done}{after}\n{where or 'Помітного росту тек не знайшов.'}"
         if not self.disk_low(d1):
             if actions and not cfg["dry_run"]:
-                self.mail("Диск закінчувався — підчистив сам", f"{head}\n\n{details}", key="disk-cleaned")
+                self.mail("Диск закінчувався — підчистив сам", f"{head}\n\n{details}")   # звіт про зроблене не глушимо
             return details
         # місця все ще мало: чи це дані, під які власник дозволив докуповувати диск?
         allowed = [(p, g, s) for p, g, s in top if self.is_growable(p)]
