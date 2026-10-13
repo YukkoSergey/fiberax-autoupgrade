@@ -8,5 +8,6 @@
   "cpu_busy_pct": 85,
   "quiet_hour_utc": null,
   "grow_paths": [],
+  "cache_exclude": [],
   "dry_run": false
 }
