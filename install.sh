@@ -6,6 +6,7 @@ cd "$(dirname "$0")"
 install -d -m 755 /opt/vm-guardian
 install -d -m 700 /etc/vm-guardian /var/lib/vm-guardian
 install -m 755 vm_guardian.py /opt/vm-guardian/vm_guardian.py
+install -m 644 apps.json /opt/vm-guardian/apps.json
 [ -f /etc/vm-guardian/config.json ] || echo '{}' > /etc/vm-guardian/config.json
 chmod 600 /etc/vm-guardian/config.json
 if [ ! -f /etc/vm-guardian/fiberax.token ]; then

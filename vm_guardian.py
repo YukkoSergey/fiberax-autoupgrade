@@ -16,7 +16,7 @@ vm-guardian - демон, що стежить за ресурсами цієї �
   Саме збільшення (з перезавантаженням) виконується лише в годину найменшого навантаження.
 
 Тільки стандартна бібліотека. Запуск: vm_guardian.py run | setup [--stop EUR] [--warn EUR] [--grow шляхи] [--mail адреса]
-        | allow-growth <тека> | status | diagnose | resume | test-mail
+        | allow-growth <тека> | apps | status | diagnose | resume | test-mail
 """
 import datetime as dt
 import fnmatch
@@ -96,6 +96,7 @@ DEFAULTS = {
     "journal_max_mb": 300,
     # дані, під які можна автоматично докуповувати диск (glob); задає власник у setup / allow-growth
     "grow_paths": [],
+    "apps_file": None,                      # профілі відомого софту; None -> apps.json поруч зі скриптом
     "du_interval_h": 6,
     "du_depth": 6,
     "du_min_mb": 100,
@@ -209,6 +210,13 @@ class Guardian:
             with open(CONFIG_PATH) as f:
                 self.cfg.update(json.load(f))
         self.api = Api(self.cfg["api_base"], self.cfg["token_file"])
+        self.apps = []
+        apps_file = self.cfg["apps_file"] or os.path.join(os.path.dirname(os.path.abspath(__file__)), "apps.json")
+        try:
+            with open(apps_file) as f:
+                self.apps = json.load(f)["apps"]
+        except (OSError, ValueError, KeyError) as e:
+            log(f"профілі софту не завантажено ({apps_file}): {e}")
         self.state = {"mail_sent": {}, "du": [], "pending": {}, "in_progress": None,
                       "added_eur": 0.0, "halted": False, "resizes": [], "last_diag": 0}
         try:
@@ -844,6 +852,11 @@ class Guardian:
         res = [r for r in res if not any(o[0].startswith(r[0].rstrip("/") + "/") for o in res)] or res
         return res[:10], None
 
+    @staticmethod
+    def path_size(path):
+        rc, out = run(["du", "-sxb", path], timeout=600)
+        return int(out.split()[0]) if rc == 0 and out.split() and out.split()[0].isdigit() else 0
+
     def is_growable(self, path):
         """Чи лежить тека в даних, під які власник дозволив автоматично докуповувати диск."""
         return any(fnmatch.fnmatch(path, g) or fnmatch.fnmatch(path, g.rstrip("/") + "/*")
@@ -853,7 +866,7 @@ class Guardian:
 
     def inventory(self):
         """Знімок того, що зараз стоїть на машині: контейнери з томами, PVC/поди k3s, процеси з відкритими файлами."""
-        inv = {"mounts": [], "containers": {}, "pods": {}, "procs": [], "nextcloud": [], "refs": []}
+        inv = {"mounts": [], "containers": {}, "pods": {}, "procs": [], "cmeta": [], "refs": [], "apps": []}
         for f in (glob.glob("/etc/systemd/system/*.service") + glob.glob("/etc/cron.d/*") + ["/etc/crontab"]
                   + glob.glob("/var/spool/cron/crontabs/*")):
             try:
@@ -871,11 +884,12 @@ class Guardian:
                         proj = (c["Config"].get("Labels") or {}).get("com.docker.compose.project")
                         desc = f"контейнер {name} ({image})" + (f", compose-проєкт {proj}" if proj else "")
                         inv["containers"][c["Id"]] = desc
+                        meta = {"name": name, "image": image, "running": bool(c["State"].get("Running")), "mounts": []}
+                        inv["cmeta"].append(meta)
                         for m in c.get("Mounts") or []:
                             if m.get("Source"):
                                 inv["mounts"].append((m["Source"].rstrip("/"), f"{desc}, змонтовано в {m.get('Destination')}"))
-                        if c["State"].get("Running") and re.search(r"(^|/)nextcloud(:|$)", image):
-                            inv["nextcloud"].append(name)
+                                meta["mounts"].append((m.get("Type"), m["Source"].rstrip("/")))
                 except (ValueError, KeyError, TypeError) as e:
                     log("docker inspect parse failed:", e)
         if shutil.which("k3s") or shutil.which("kubectl"):
@@ -903,7 +917,82 @@ class Guardian:
                 inv["procs"] += [(p, desc) for p in paths if p.startswith("/") and not p.startswith(("/proc", "/dev", "/sys", "/run"))]
             except OSError:
                 continue
+        inv["apps"] = self.detect_apps(inv)
         return inv
+
+    def detect_apps(self, inv):
+        """Який відомий софт (профілі з apps.json) стоїть на машині. Розпізнаємо за ознаками на місці:
+        файли, systemd-юніти, образи контейнерів, команди - а не за назвою образу, з якого зроблено сервер."""
+        hits = []
+        for a in self.apps:
+            d, via = a.get("detect", {}), []
+            for g in d.get("paths", []):
+                found = glob.glob(g)
+                if found:
+                    via.append(found[0])
+                    break
+            for u in d.get("units", []):
+                if any(os.path.exists(f"{b}/{u}") for b in ("/etc/systemd/system", "/lib/systemd/system", "/usr/lib/systemd/system")):
+                    via.append(u)
+                    break
+            conts = [c for c in inv["cmeta"] if any(re.search(rx, c["image"]) or re.search(rx, c["name"]) for rx in d.get("containers", []))]
+            if conts:
+                via.append("контейнер " + ", ".join(c["name"] for c in conts[:3]))
+            for b in d.get("bins", []):
+                if shutil.which(b):
+                    via.append("команда " + b)
+                    break
+            if not via:
+                continue
+            data = {p.rstrip("/") for g in a.get("data", []) for p in glob.glob(g)}
+            if a.get("container_data", True):
+                for c in conts:
+                    for mtype, src in c["mounts"]:
+                        if mtype == "volume":
+                            data.add(src[:-len("/_data")] if src.endswith("/_data") else src)
+                        elif mtype == "bind" and os.path.isdir(src) and not src.startswith(
+                                ("/etc", "/run", "/var/run", "/proc", "/sys", "/dev", "/usr", "/lib", "/boot", "/tmp")) and src != "/":
+                            data.add(src)
+            hits.append({"app": a, "via": via, "containers": conts, "data": sorted(data),
+                         "backups": sorted({p.rstrip("/") for g in a.get("backups", []) for p in glob.glob(g)})})
+        return hits
+
+    @staticmethod
+    def app_of(path, inv):
+        """Профіль програми, до даних якої належить тека (або None)."""
+        base = path.rstrip("/")
+        for hit in inv["apps"]:
+            if any(base == d or base.startswith(d + "/") or d.startswith(base + "/") for d in hit["data"] + hit["backups"]):
+                return hit
+        return None
+
+    @staticmethod
+    def cleanup_cmds(c, hit):
+        """Розгортає запис cleanup із профілю в конкретні команди для цієї машини: [(назва, команда)]."""
+        if c.get("bin") and not shutil.which(c["bin"]):
+            return []
+        if "sh" in c:
+            return [(c["name"], ["sh", "-c", c["sh"]])]
+        if "container" in c:
+            return [(f"{c['name']} [{x['name']}]", [a.replace("{c}", x["name"]) for a in c["cmd"]])
+                    for x in hit["containers"] if x["running"] and re.search(c["container"], x["image"])]
+        if "foreach" in c:
+            out, seen = [], set()
+            for g in c["foreach"]:
+                for p in glob.glob(g):
+                    real = os.path.realpath(p)
+                    if real in seen:
+                        continue
+                    seen.add(real)
+                    cmd = [a.replace("{p}", real).replace("{dir}", os.path.dirname(real)) for a in c["cmd"]]
+                    if c.get("as_owner"):
+                        try:
+                            cmd = ["runuser", "-u", pwd.getpwuid(os.stat(real).st_uid).pw_name, "--"] + cmd
+                        except (KeyError, OSError):
+                            continue
+                    out.append((f"{c['name']} [{os.path.dirname(real)}]", cmd))
+            return out
+        return [(c["name"], c["cmd"])]
 
     @staticmethod
     def owner_of(path, inv):
@@ -1010,7 +1099,7 @@ class Guardian:
         vols |= {src for src, _ in (inv or {}).get("mounts", []) if os.path.isdir(src) and src.count("/") >= 2}
         for v in vols:
             walk(v, self.cfg["log_volume_depth"], False)
-        for g in self.cfg["log_extra_globs"]:
+        for g in self.cfg["log_extra_globs"] + [g for hit in (inv or {}).get("apps", []) for g in hit["app"].get("logs", [])]:
             cand.update(glob.glob(g))
         found = []
         for p in cand:
@@ -1025,7 +1114,9 @@ class Guardian:
         covered = set()
         for pat in self.logrotate_patterns():
             covered.update(os.path.realpath(x) for x in glob.glob(pat))
-        return sorted(((p, s, st) for p, s, st in found if os.path.realpath(p) not in covered), key=lambda x: -x[1])
+        # "x.log.1" - це вже ротована копія "x.log": якщо сам лог у logrotate, копію не чіпаємо
+        is_covered = lambda p: os.path.realpath(p) in covered or os.path.realpath(re.sub(r"\.\d+$", "", p)) in covered
+        return sorted(((p, s, st) for p, s, st in found if not is_covered(p)), key=lambda x: -x[1])
 
     def add_logrotate(self, logs):
         """Додає знайдені логи в /etc/logrotate.d і одразу ротує. Повертає рядки звіту."""
@@ -1065,14 +1156,19 @@ class Guardian:
 
     # --- caches
 
-    def find_caches(self):
-        """Теки-кеші за ознаками (назва cache/tmp/..., файл CACHEDIR.TAG) плюс задані в конфігу.
-        Повертає {тека: ознака}. Сховища контейнерів, системні теки й дозволені дані не чіпаємо."""
-        found = {}
+    def find_caches(self, inv=None):
+        """Теки-кеші: з профілів відомого софту, за ознаками (назва cache/tmp/..., файл CACHEDIR.TAG) і з конфігу.
+        Повертає {тека: (ознака, вік_у_днях)}. Сховища контейнерів, системні теки й дозволені дані за ознаками не чіпаємо."""
+        found, known, age = {}, {}, self.cfg["cache_max_age_days"]
+        for hit in (inv or {}).get("apps", []):
+            for c in hit["app"].get("caches", []):
+                for d in glob.glob(c["path"]):
+                    if os.path.isdir(d) and not os.path.islink(d):
+                        known[d.rstrip("/")] = (f"профіль {hit['app']['name']}", c.get("max_age_days", age))
         for g in self.cfg["cache_dirs"]:
             for d in glob.glob(g):
                 if os.path.isdir(d) and not os.path.islink(d):
-                    found[d] = "з конфігу"
+                    found[d] = ("з конфігу", age)
         root = self.cfg["disk_mount"]
         try:
             dev = os.stat(root).st_dev
@@ -1087,7 +1183,7 @@ class Guardian:
                 return
             for e in entries:
                 p = e.path
-                if p in found or p.startswith(protected) or self.is_growable(p):
+                if p in found or p in known or p.startswith(protected) or self.is_growable(p):
                     continue
                 try:
                     if e.stat(follow_symlinks=False).st_dev != dev:
@@ -1095,15 +1191,17 @@ class Guardian:
                 except OSError:
                     continue
                 if CACHE_NAME.search(e.name) and p != "/var/cache":     # /var/cache - по підтеках, там є винятки
-                    found[p] = f"назва «{e.name}»"
+                    found[p] = (f"назва «{e.name}»", age)
                 elif os.path.exists(os.path.join(p, "CACHEDIR.TAG")):
-                    found[p] = "позначка CACHEDIR.TAG"
+                    found[p] = ("позначка CACHEDIR.TAG", age)
                 elif depth < self.cfg["cache_search_depth"] and e.name not in ("node_modules", ".git", "site-packages"):
                     scan(p, depth + 1)
 
         scan(root, 1)
         # не чистити теку окремо, якщо вже чиститься її батьківська
-        return {p: why for p, why in found.items() if not any(p != o and p.startswith(o.rstrip("/") + "/") for o in found)}
+        found = {p: v for p, v in found.items() if not any(p != o and p.startswith(o.rstrip("/") + "/") for o in found)}
+        found.update(known)                                 # профільні теки чистимо за їхнім власним віком
+        return found
 
     def clean_caches(self, inv):
         """Чистить старе з кешів. Повертає рядки звіту."""
@@ -1137,17 +1235,15 @@ class Guardian:
         if shutil.which("docker"):
             step("docker: build-кеш старший за 7 днів", ["docker", "builder", "prune", "-f", "--filter", "until=168h"])
             step("docker: образи без тегів (dangling)", ["docker", "image", "prune", "-f"])
-        for nc in inv["nextcloud"]:
-            for occ in ("trashbin:expire", "versions:expire"):
-                step(f"Nextcloud ({nc}) occ {occ} - за власною політикою зберігання Nextcloud",
-                     ["docker", "exec", "-u", "www-data", nc, "php", "occ", occ])
-        age = self.cfg["cache_max_age_days"]
-        cutoff = time.time() - age * 86400
+        for hit in inv["apps"]:                             # штатні команди очищення відомого софту
+            for c in hit["app"].get("cleanup", []):
+                for name, cmd in self.cleanup_cmds(c, hit):
+                    step(name, cmd)
         protected = tuple(CACHE_PROTECTED) + tuple(self.cfg["cache_exclude"])
 
-        def purge(d):
+        def purge(d, age):
             """Видаляє лише звичайні файли, яких давно не чіпали; теки, сокети, pid/lock-файли лишає."""
-            n = 0
+            n, cutoff = 0, time.time() - age * 86400
             for dp, dns, fns in os.walk(d):
                 dns[:] = [x for x in dns if not os.path.ismount(os.path.join(dp, x))
                           and not (os.path.join(dp, x).startswith(protected) and not d.startswith(protected))]
@@ -1163,9 +1259,9 @@ class Guardian:
                         pass
             return f"{n} files"
 
-        for d, why in sorted(self.find_caches().items()):
+        for d, (why, age) in sorted(self.find_caches(inv).items()):
             if dir_size(d) > self.cfg["cache_min_mb"] * MB:
-                step(f"кеш {d} ({why}): видалив файли, яких не чіпали понад {age} днів", fn=lambda d=d: purge(d))
+                step(f"кеш {d} ({why}): видалив файли, яких не чіпали понад {age} днів", fn=lambda d=d, age=age: purge(d, age))
         return report
 
     def untouched_caches(self, sizes):
@@ -1198,6 +1294,24 @@ class Guardian:
         else:
             where = ("Історії розмірів ще немає, тому показую найбільших споживачів:\n" +
                      "".join(f"  {fmt_size(s):>10}  {p}\n      -> {self.owner_of(p, inv)}\n" for p, g, s in top))
+        advised = []
+        for p, g, s in top:
+            hit = self.app_of(p, inv)
+            if hit and hit not in advised and hit["app"].get("advice"):
+                advised.append(hit)
+        if advised:
+            where += "\nЩо відомо про цей софт:\n" + "".join(f"  {h['app']['name']}: {h['app']['advice']}\n" for h in advised)
+        baks = []
+        for hit in inv["apps"]:
+            for b in hit["backups"]:
+                size = sizes.get(b) or self.path_size(b)
+                if size >= cfg["cache_min_mb"] * MB:
+                    baks.append((size, b, hit["app"]["name"]))
+        if baks:
+            where += ("\nВласні бекапи програм на цьому ж диску (сам не видаляю):\n" +
+                      "".join(f"  {fmt_size(s):>10}  {b}  ({n})\n" for s, b, n in sorted(baks, reverse=True)))
+        if inv["apps"]:
+            where += "\nВідомий софт на машині: " + "; ".join(h["app"]["name"] for h in inv["apps"]) + ".\n"
         hints = self.untouched_caches(sizes)
         if hints:
             where += ("\nСхоже на кеш усередині томів контейнерів (сам не чіпаю, бо це дані програми):\n" +
@@ -1244,31 +1358,35 @@ class Guardian:
     def setup_grow(self, grow=None):
         """Питає власника, під які дані можна автоматично докуповувати диск. Кандидати - томи контейнерів."""
         inv = self.inventory()
-        cands = sorted(set(glob.glob("/var/lib/docker/volumes/*/")) | set(glob.glob("/var/lib/rancher/k3s/storage/*/")))
+        app_data = {d: hit["app"]["name"] for hit in inv["apps"] for d in hit["data"]}
+        cands = set(glob.glob("/var/lib/docker/volumes/*/")) | set(glob.glob("/var/lib/rancher/k3s/storage/*/")) | set(app_data)
         rows = []
-        for c in cands:
-            c = c.rstrip("/")
-            rc, out = run(["du", "-sxb", c], timeout=600)
-            size = int(out.split()[0]) if rc == 0 and out.split()[0].isdigit() else 0
-            if size >= self.cfg["du_min_mb"] * MB:
+        for c in sorted({c.rstrip("/") for c in cands}):
+            size = self.path_size(c)
+            if size >= self.cfg["du_min_mb"] * MB or c in app_data:
                 rows.append((size, c))
-        rows.sort(reverse=True)
+        rows.sort(key=lambda r: (r[1] not in app_data, -r[0]))
+        if inv["apps"]:
+            print("\nЗнайдений відомий софт: " + "; ".join(f"{h['app']['name']} ({h['via'][0]})" for h in inv["apps"]))
         cur = self.cfg["grow_paths"]
         print("\nПід які дані можна автоматично докуповувати диск, коли вони ростуть?")
         print("(Якщо росте щось інше, я лише надішлю листа з тим, що саме і де виросло.)")
         for i, (size, c) in enumerate(rows, 1):
-            print(f"  {i:>2}. {fmt_size(size):>10}  {c}{'   [дозволено]' if self.is_growable(c) else ''}\n        {self.owner_of(c, inv)}")
+            print(f"  {i:>2}. {fmt_size(size):>10}  {c}{'   [дозволено]' if self.is_growable(c) else ''}"
+                  f"{'   <- дані ' + app_data[c] if c in app_data else ''}\n        {self.owner_of(c, inv)}")
         if not rows:
             print("  (томів контейнерів з даними не знайшов; шлях можна додати пізніше: vm-guardian allow-growth <тека>)")
         print(f"Зараз дозволено: {', '.join(cur) or 'нічого'}")
         if grow is None and sys.stdin.isatty():
             try:
-                grow = input("Номери або шляхи через кому (Enter - лишити як є, 0 - нічого): ").strip()
+                grow = input("Номери або шляхи через кому (Enter - лишити як є, 0 - нічого, a - усі дані відомого софту): ").strip()
             except EOFError:
                 grow = ""
         if not grow:
             return
         paths = []
+        if grow.lower() in ("a", "а"):
+            grow = ",".join(app_data)
         for tok in [t.strip() for t in grow.split(",") if t.strip() and t.strip() != "0"]:
             paths.append(rows[int(tok) - 1][1] if tok.isdigit() and 0 < int(tok) <= len(rows) else tok.rstrip("/"))
         self.set_grow_paths(paths)
@@ -1329,6 +1447,33 @@ class Guardian:
                 log(f"tick error: {type(e).__name__}: {e}")
             time.sleep(self.cfg["interval_s"])
 
+    def apps_report(self):
+        """Який софт із маркетплейсу Fiberax покрито профілями і що з нього знайдено на цій машині."""
+        covered = {n: a["name"] for a in self.apps for n in a.get("images", [])}
+        try:
+            srv = self.api.get(f"/servers/{self.server_id()}")
+            imgs = self.api.get(f"/server-types/{srv['server_type_id']}/images")
+            print(f"Образ цього сервера: {srv.get('image_name')}"
+                  + (f" -> профіль «{covered[srv['image_name']]}»" if srv.get("image_name") in covered else " (чиста ОС або власний образ)"))
+            market = sorted(i["name"] for i in imgs if i["type"] == "marketplace")
+            missing = [n for n in market if n not in covered]
+            print(f"Образів маркетплейсу в каталозі: {len(market)}, з профілем: {len(market) - len(missing)}"
+                  + (f"; БЕЗ профілю: {', '.join(missing)}" if missing else ""))
+        except Exception as e:
+            print("Каталог образів з API недоступний:", e)
+        hits = self.inventory()["apps"]
+        print(f"\nПрофілів софту: {len(self.apps)}. Знайдено на цій машині: {len(hits)}")
+        for h in hits:
+            a = h["app"]
+            print(f"  {a['name']}  (ознака: {'; '.join(h['via'])})")
+            for d in h["data"]:
+                print(f"      дані:   {d}{'   [диск докуповується]' if self.is_growable(d) else ''}")
+            for b in h["backups"]:
+                print(f"      бекапи: {b}")
+            for c in a.get("cleanup", []):
+                for name, cmd in self.cleanup_cmds(c, h):
+                    print(f"      чищення: {' '.join(cmd)}")
+
     def status(self):
         d, mi, st = self.disk(), self.meminfo(), self.state
         print(f"диск {self.cfg['disk_mount']}: зайнято {d['used_pct']:.0f}% з {d['total'] / GB:.1f} ГБ, вільно {fmt_size(d['free'])}"
@@ -1358,6 +1503,7 @@ class Guardian:
             print(f"бюджет: базова ціна {self.cfg['baseline_eur']} EUR, попередження від {self.cfg['warn_eur']} EUR, "
                   f"стеля {self.cfg['stop_eur']} EUR/міс (загальна сума), демон додав {st['added_eur']:.2f} EUR/міс; "
                   f"автозбільшення {'ЗУПИНЕНО: ' + st.get('halt_reason', '') if st['halted'] else 'дозволено'}")
+        print("відомий софт:", "; ".join(h["app"]["name"] for h in self.inventory()["apps"]) or "не знайдено", "(докладніше: vm-guardian apps)")
         print("диск автоматично докуповується під:", ", ".join(self.cfg["grow_paths"]) or "нічого (vm-guardian allow-growth <тека>)")
         print("у черзі:", {k: v["reason"] for k, v in st["pending"].items()} or "нічого")
         print("історія збільшень:\n" + self.resize_history(), end="")
@@ -1377,15 +1523,17 @@ def main():
         print("Диск автоматично докуповується під:", ", ".join(g.cfg["grow_paths"]))
     elif cmd == "status":
         g.status()
+    elif cmd == "apps":
+        g.apps_report()
     elif cmd == "diagnose":                                 # показати діагностику диска, нічого не змінюючи
         g.cfg["dry_run"] = True
         logs = g.big_unrotated_logs(g.inventory())
         print("Великі логи поза logrotate:" if logs else "Великих логів поза logrotate немає.")
         for p, s, _ in logs:
             print(f"  {fmt_size(s):>10}  {p}")
-        print("Теки-кеші, знайдені за ознаками:")
-        for p, why in sorted(g.find_caches().items()):
-            print(f"  {p}  ({why})")
+        print("Теки-кеші:")
+        for p, (why, age) in sorted(g.find_caches(g.inventory()).items()):
+            print(f"  {p}  ({why}, файли старші за {age} днів)")
         g.cfg["disk_used_pct"] = 0                          # вдати, що диска мало
         print(g.diagnose_disk())
     elif cmd == "resume":

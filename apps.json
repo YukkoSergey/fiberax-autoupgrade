@@ -1,0 +1,1199 @@
+{
+ "_comment": "Профілі софту з маркетплейсу Fiberax для vm-guardian. Програма розпізнається на машині за ознаками з detect (будь-яка з них), а не за назвою образу. data - дані, під які доречно докуповувати диск; logs - логи, які треба ротувати; caches - теки, де можна видаляти файли, старші за max_age_days; backups - власні бекапи програми (лише показуються в листі); cleanup - штатні безпечні команди очищення; advice - підказка власнику, коли програма росте.",
+ "apps": [
+  {
+   "id": "wordpress",
+   "name": "WordPress / WooCommerce",
+   "images": [
+    "WordPress",
+    "WooCommerce"
+   ],
+   "detect": {
+    "paths": [
+     "/var/www/html/wp-config.php",
+     "/var/www/*/wp-config.php",
+     "/var/www/*/public_html/wp-config.php",
+     "/var/www/*/htdocs/wp-config.php",
+     "/srv/www/*/wp-config.php",
+     "/var/www/vhosts/*/httpdocs/wp-config.php",
+     "/www/wwwroot/*/wp-config.php"
+    ],
+    "containers": [
+     "(^|/)wordpress(:|$)"
+    ]
+   },
+   "data": [
+    "/var/www/html/wp-content/uploads",
+    "/var/www/*/wp-content/uploads",
+    "/var/www/*/public_html/wp-content/uploads",
+    "/var/www/*/htdocs/wp-content/uploads",
+    "/srv/www/*/wp-content/uploads",
+    "/var/www/vhosts/*/httpdocs/wp-content/uploads",
+    "/www/wwwroot/*/wp-content/uploads",
+    "/var/lib/mysql"
+   ],
+   "logs": [
+    "/var/www/html/wp-content/debug.log",
+    "/var/www/*/wp-content/debug.log",
+    "/var/www/*/public_html/wp-content/debug.log",
+    "/var/www/*/htdocs/wp-content/debug.log",
+    "/srv/www/*/wp-content/debug.log",
+    "/var/www/vhosts/*/httpdocs/wp-content/debug.log",
+    "/www/wwwroot/*/wp-content/debug.log",
+    "/var/www/html/wp-content/uploads/wc-logs/*.log",
+    "/var/www/*/wp-content/uploads/wc-logs/*.log",
+    "/var/www/*/public_html/wp-content/uploads/wc-logs/*.log",
+    "/var/www/*/htdocs/wp-content/uploads/wc-logs/*.log",
+    "/srv/www/*/wp-content/uploads/wc-logs/*.log",
+    "/var/www/vhosts/*/httpdocs/wp-content/uploads/wc-logs/*.log",
+    "/www/wwwroot/*/wp-content/uploads/wc-logs/*.log"
+   ],
+   "caches": [
+    {
+     "path": "/var/www/html/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/*/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/*/public_html/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/*/htdocs/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/srv/www/*/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/vhosts/*/httpdocs/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/www/wwwroot/*/wp-content/cache",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/html/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/*/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/*/public_html/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/*/htdocs/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/srv/www/*/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/vhosts/*/httpdocs/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/www/wwwroot/*/wp-content/upgrade",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/www/html/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/var/www/*/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/var/www/*/public_html/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/var/www/*/htdocs/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/srv/www/*/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/var/www/vhosts/*/httpdocs/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/www/wwwroot/*/wp-content/uploads/wc-logs",
+     "max_age_days": 30
+    }
+   ],
+   "backups": [
+    "/var/www/html/wp-content/updraft",
+    "/var/www/*/wp-content/updraft",
+    "/var/www/*/public_html/wp-content/updraft",
+    "/var/www/*/htdocs/wp-content/updraft",
+    "/srv/www/*/wp-content/updraft",
+    "/var/www/vhosts/*/httpdocs/wp-content/updraft",
+    "/www/wwwroot/*/wp-content/updraft",
+    "/var/www/html/wp-content/ai1wm-backups",
+    "/var/www/*/wp-content/ai1wm-backups",
+    "/var/www/*/public_html/wp-content/ai1wm-backups",
+    "/var/www/*/htdocs/wp-content/ai1wm-backups",
+    "/srv/www/*/wp-content/ai1wm-backups",
+    "/var/www/vhosts/*/httpdocs/wp-content/ai1wm-backups",
+    "/www/wwwroot/*/wp-content/ai1wm-backups",
+    "/var/www/html/wp-content/backups*",
+    "/var/www/*/wp-content/backups*",
+    "/var/www/*/public_html/wp-content/backups*",
+    "/var/www/*/htdocs/wp-content/backups*",
+    "/srv/www/*/wp-content/backups*",
+    "/var/www/vhosts/*/httpdocs/wp-content/backups*",
+    "/www/wwwroot/*/wp-content/backups*"
+   ],
+   "cleanup": [
+    {
+     "name": "WordPress: прострочені transient-записи",
+     "bin": "wp",
+     "foreach": [
+      "/var/www/html/wp-config.php",
+      "/var/www/*/wp-config.php",
+      "/var/www/*/public_html/wp-config.php",
+      "/var/www/*/htdocs/wp-config.php",
+      "/srv/www/*/wp-config.php",
+      "/var/www/vhosts/*/httpdocs/wp-config.php",
+      "/www/wwwroot/*/wp-config.php"
+     ],
+     "cmd": [
+      "wp",
+      "transient",
+      "delete",
+      "--expired",
+      "--allow-root",
+      "--path={dir}"
+     ]
+    }
+   ],
+   "container_data": true,
+   "advice": "Найчастіше ростуть wp-content/uploads (медіа), бекапи плагінів усередині wp-content і таблиці БД (wp_options, для WooCommerce - wp_actionscheduler_*, сесії). wp-content/debug.log вмикається WP_DEBUG_LOG - вимкни, якщо не потрібен."
+  },
+  {
+   "id": "nextcloud",
+   "name": "Nextcloud",
+   "images": [
+    "NextCloud"
+   ],
+   "detect": {
+    "paths": [
+     "/var/www/nextcloud/occ",
+     "/var/www/html/occ",
+     "/var/www/*/occ",
+     "/var/snap/nextcloud"
+    ],
+    "containers": [
+     "(^|/)nextcloud(:|$)",
+     "nextcloud/all-in-one",
+     "nextcloud/aio-nextcloud"
+    ]
+   },
+   "data": [
+    "/var/www/nextcloud/data",
+    "/var/www/html/data",
+    "/var/www/*/data",
+    "/var/snap/nextcloud/common/nextcloud/data",
+    "/mnt/ncdata",
+    "/var/lib/docker/volumes/nextcloud_aio_nextcloud_data",
+    "/var/lib/docker/volumes/nextcloud_aio_database",
+    "/var/lib/mysql",
+    "/var/lib/postgresql"
+   ],
+   "logs": [
+    "/var/www/nextcloud/data/*.log",
+    "/var/www/html/data/*.log",
+    "/var/www/*/data/*.log",
+    "/var/snap/nextcloud/common/nextcloud/data/*.log",
+    "/mnt/ncdata/*.log",
+    "/var/lib/docker/volumes/*nextcloud*/_data/data/*.log",
+    "/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [
+    {
+     "name": "Nextcloud occ trashbin:expire (за політикою зберігання самого Nextcloud)",
+     "container": "(^|/)nextcloud(:|$)|aio-nextcloud",
+     "cmd": [
+      "docker",
+      "exec",
+      "-u",
+      "www-data",
+      "{c}",
+      "php",
+      "occ",
+      "trashbin:expire"
+     ]
+    },
+    {
+     "name": "Nextcloud occ trashbin:expire (за політикою зберігання самого Nextcloud)",
+     "foreach": [
+      "/var/www/nextcloud/occ",
+      "/var/www/html/occ",
+      "/var/www/*/occ"
+     ],
+     "as_owner": true,
+     "cmd": [
+      "php",
+      "{p}",
+      "trashbin:expire"
+     ]
+    },
+    {
+     "name": "Nextcloud occ trashbin:expire (за політикою зберігання самого Nextcloud)",
+     "bin": "nextcloud.occ",
+     "cmd": [
+      "nextcloud.occ",
+      "trashbin:expire"
+     ]
+    },
+    {
+     "name": "Nextcloud occ versions:expire (за політикою зберігання самого Nextcloud)",
+     "container": "(^|/)nextcloud(:|$)|aio-nextcloud",
+     "cmd": [
+      "docker",
+      "exec",
+      "-u",
+      "www-data",
+      "{c}",
+      "php",
+      "occ",
+      "versions:expire"
+     ]
+    },
+    {
+     "name": "Nextcloud occ versions:expire (за політикою зберігання самого Nextcloud)",
+     "foreach": [
+      "/var/www/nextcloud/occ",
+      "/var/www/html/occ",
+      "/var/www/*/occ"
+     ],
+     "as_owner": true,
+     "cmd": [
+      "php",
+      "{p}",
+      "versions:expire"
+     ]
+    },
+    {
+     "name": "Nextcloud occ versions:expire (за політикою зберігання самого Nextcloud)",
+     "bin": "nextcloud.occ",
+     "cmd": [
+      "nextcloud.occ",
+      "versions:expire"
+     ]
+    }
+   ],
+   "container_data": true,
+   "advice": "Ростуть файли користувачів, їхні версії та кошик, прев'ю (appdata_*/preview). Кошик і версії я підчищаю лише за правилами самого Nextcloud (trashbin_retention_obligation, versions_retention_obligation в config.php)."
+  },
+  {
+   "id": "ghost",
+   "name": "Ghost",
+   "images": [
+    "Ghost"
+   ],
+   "detect": {
+    "paths": [
+     "/var/www/ghost/config.production.json",
+     "/var/www/*/config.production.json",
+     "/var/lib/ghost"
+    ],
+    "containers": [
+     "(^|/)ghost(:|$)"
+    ],
+    "bins": [
+     "ghost"
+    ]
+   },
+   "data": [
+    "/var/www/ghost/content/images",
+    "/var/www/ghost/content/media",
+    "/var/www/ghost/content/files",
+    "/var/www/*/content/images",
+    "/var/lib/ghost/content",
+    "/var/lib/mysql"
+   ],
+   "logs": [
+    "/var/www/ghost/content/logs/*.log",
+    "/var/www/*/content/logs/*.log",
+    "/var/lib/ghost/content/logs/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть content/images і content/media. Логи Ghost лежать у content/logs."
+  },
+  {
+   "id": "prestashop",
+   "name": "PrestaShop",
+   "images": [
+    "PrestaShop"
+   ],
+   "detect": {
+    "paths": [
+     "/var/www/html/app/config/parameters.php",
+     "/var/www/*/app/config/parameters.php",
+     "/var/www/*/public_html/app/config/parameters.php",
+     "/var/www/*/htdocs/app/config/parameters.php",
+     "/srv/www/*/app/config/parameters.php",
+     "/var/www/vhosts/*/httpdocs/app/config/parameters.php",
+     "/www/wwwroot/*/app/config/parameters.php",
+     "/var/www/html/config/settings.inc.php",
+     "/var/www/*/config/settings.inc.php",
+     "/var/www/*/public_html/config/settings.inc.php",
+     "/var/www/*/htdocs/config/settings.inc.php",
+     "/srv/www/*/config/settings.inc.php",
+     "/var/www/vhosts/*/httpdocs/config/settings.inc.php",
+     "/www/wwwroot/*/config/settings.inc.php"
+    ],
+    "containers": [
+     "prestashop"
+    ]
+   },
+   "data": [
+    "/var/www/html/img",
+    "/var/www/*/img",
+    "/var/www/*/public_html/img",
+    "/var/www/*/htdocs/img",
+    "/srv/www/*/img",
+    "/var/www/vhosts/*/httpdocs/img",
+    "/www/wwwroot/*/img",
+    "/var/www/html/upload",
+    "/var/www/*/upload",
+    "/var/www/*/public_html/upload",
+    "/var/www/*/htdocs/upload",
+    "/srv/www/*/upload",
+    "/var/www/vhosts/*/httpdocs/upload",
+    "/www/wwwroot/*/upload",
+    "/var/www/html/download",
+    "/var/www/*/download",
+    "/var/www/*/public_html/download",
+    "/var/www/*/htdocs/download",
+    "/srv/www/*/download",
+    "/var/www/vhosts/*/httpdocs/download",
+    "/www/wwwroot/*/download",
+    "/var/lib/mysql"
+   ],
+   "logs": [
+    "/var/www/html/var/logs/*.log",
+    "/var/www/*/var/logs/*.log",
+    "/var/www/*/public_html/var/logs/*.log",
+    "/var/www/*/htdocs/var/logs/*.log",
+    "/srv/www/*/var/logs/*.log",
+    "/var/www/vhosts/*/httpdocs/var/logs/*.log",
+    "/www/wwwroot/*/var/logs/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть img/ (зображення товарів і згенеровані мініатюри), var/logs і таблиці статистики в БД (ps_connections, ps_guest, ps_log). Кеш var/cache я не чіпаю: його файли залежать один від одного, чистити треба з адмінки (Advanced Parameters -> Performance -> Clear cache)."
+  },
+  {
+   "id": "jitsi",
+   "name": "Jitsi Meet",
+   "images": [
+    "Jitsi"
+   ],
+   "detect": {
+    "paths": [
+     "/etc/jitsi",
+     "/root/.jitsi-meet-cfg",
+     "/opt/jitsi*",
+     "/opt/docker-jitsi-meet"
+    ],
+    "containers": [
+     "jitsi/"
+    ]
+   },
+   "data": [
+    "/srv/recordings",
+    "/var/lib/jitsi/recordings",
+    "/config/recordings"
+   ],
+   "logs": [
+    "/var/log/jitsi/*.log",
+    "/var/log/prosody/*.log",
+    "/var/log/turnserver/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Сам Jitsi диск майже не займає; місце з'їдають записи конференцій (Jibri) і логи jvb/jicofo/prosody."
+  },
+  {
+   "id": "mailcow",
+   "name": "Mailcow",
+   "images": [
+    "Mailcow"
+   ],
+   "detect": {
+    "paths": [
+     "/opt/mailcow-dockerized/mailcow.conf"
+    ],
+    "containers": [
+     "mailcow/"
+    ]
+   },
+   "data": [
+    "/var/lib/docker/volumes/mailcowdockerized_vmail-vol-1",
+    "/var/lib/docker/volumes/mailcowdockerized_vmail-index-vol-1",
+    "/var/lib/docker/volumes/mailcowdockerized_mysql-vol-1",
+    "/var/lib/docker/volumes/mailcowdockerized_sogo-userdata-backup-vol-1"
+   ],
+   "logs": [],
+   "caches": [],
+   "backups": [
+    "/opt/mailcow-dockerized/backup*",
+    "/backup/mailcow*",
+    "/var/backups/mailcow*"
+   ],
+   "cleanup": [],
+   "container_data": false,
+   "advice": "Росте пошта користувачів (vmail-vol), її індекси та карантин. Обмеження - квоти скриньок у панелі Mailcow; карантин чиститься за налаштуваннями Quarantine -> retention."
+  },
+  {
+   "id": "mongodb",
+   "name": "MongoDB",
+   "images": [
+    "MongoDB"
+   ],
+   "detect": {
+    "paths": [
+     "/etc/mongod.conf",
+     "/var/lib/mongodb",
+     "/var/lib/mongo"
+    ],
+    "units": [
+     "mongod.service"
+    ],
+    "containers": [
+     "(^|/)mongo(:|$)"
+    ]
+   },
+   "data": [
+    "/var/lib/mongodb",
+    "/var/lib/mongo"
+   ],
+   "logs": [
+    "/var/log/mongodb/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть дані колекцій і журнал WiredTiger. Видалені документи місце на диску не повертають - потрібен compact або повторна синхронізація. /var/log/mongodb/mongod.log сам не ротується, я додаю його в logrotate."
+  },
+  {
+   "id": "mysql",
+   "name": "MySQL / MariaDB",
+   "images": [
+    "MySQL"
+   ],
+   "detect": {
+    "paths": [
+     "/var/lib/mysql/mysql",
+     "/var/lib/mysql/ibdata1"
+    ],
+    "units": [
+     "mysql.service",
+     "mysqld.service",
+     "mariadb.service"
+    ],
+    "containers": [
+     "(^|/)(mysql|mariadb)(:|$)"
+    ]
+   },
+   "data": [
+    "/var/lib/mysql"
+   ],
+   "logs": [
+    "/var/log/mysql/*.log",
+    "/var/log/mariadb/*.log",
+    "/var/log/mysqld.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Крім самих таблиць, часто ростуть бінарні журнали (binlog.*, mysql-bin.*) у /var/lib/mysql. Я їх не видаляю - це може зламати реплікацію й відновлення. Обмеж їх: binlog_expire_logs_seconds (MySQL 8) / expire_logs_days, або PURGE BINARY LOGS BEFORE ..."
+  },
+  {
+   "id": "postgresql",
+   "name": "PostgreSQL",
+   "images": [
+    "PostgreSQL"
+   ],
+   "detect": {
+    "paths": [
+     "/var/lib/postgresql/*/main/PG_VERSION",
+     "/var/lib/pgsql/*/data/PG_VERSION",
+     "/var/lib/pgsql/data/PG_VERSION"
+    ],
+    "units": [
+     "postgresql.service"
+    ],
+    "containers": [
+     "(^|/)postgres(:|$)",
+     "dpage/pgadmin4"
+    ]
+   },
+   "data": [
+    "/var/lib/postgresql",
+    "/var/lib/pgsql"
+   ],
+   "logs": [
+    "/var/log/postgresql/*.log",
+    "/var/lib/pgsql/*/data/log/*.log",
+    "/var/lib/pgadmin/*.log",
+    "/var/log/pgadmin/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Крім таблиць, росте pg_wal (якщо завис слот реплікації або не працює archive_command) і роздуваються таблиці без VACUUM. pg_wal руками видаляти не можна - перевір pg_replication_slots і архівацію."
+  },
+  {
+   "id": "valkey",
+   "name": "Valkey / Redis",
+   "images": [
+    "Valkey"
+   ],
+   "detect": {
+    "paths": [
+     "/etc/valkey",
+     "/var/lib/valkey",
+     "/etc/redis/redis.conf"
+    ],
+    "units": [
+     "valkey-server.service",
+     "valkey.service",
+     "redis-server.service"
+    ],
+    "containers": [
+     "(^|/)(valkey|redis)(:|$)"
+    ]
+   },
+   "data": [
+    "/var/lib/valkey",
+    "/var/lib/redis"
+   ],
+   "logs": [
+    "/var/log/valkey/*.log",
+    "/var/log/redis/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "На диску лежать знімок RDB і журнал AOF (appendonlydir). AOF росте до перезапису - перевір auto-aof-rewrite-percentage."
+  },
+  {
+   "id": "ubuntu-desktop",
+   "name": "Ubuntu Desktop",
+   "images": [
+    "Ubuntu Desktop 24.04"
+   ],
+   "detect": {
+    "paths": [
+     "/usr/share/xsessions",
+     "/usr/share/wayland-sessions",
+     "/etc/xrdp"
+    ]
+   },
+   "data": [
+    "/home"
+   ],
+   "logs": [],
+   "caches": [],
+   "backups": [],
+   "cleanup": [
+    {
+     "name": "snap: старі вимкнені ревізії пакетів",
+     "bin": "snap",
+     "sh": "snap list --all | awk '/disabled/{print $1, $3}' | while read n r; do snap remove \"$n\" --revision=\"$r\"; done"
+    }
+   ],
+   "container_data": false,
+   "advice": "Місце займають домашні теки, кеші браузерів (~/.cache) і старі ревізії snap-пакетів."
+  },
+  {
+   "id": "docker",
+   "name": "Docker + Portainer",
+   "images": [
+    "Docker"
+   ],
+   "detect": {
+    "containers": [
+     "portainer/"
+    ],
+    "paths": [
+     "/var/lib/docker/volumes/portainer_data"
+    ]
+   },
+   "data": [],
+   "logs": [],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": false,
+   "advice": "Місце займають образи, шари й томи контейнерів та їхні логи. Логи контейнерів я додаю в logrotate; образи без тегів і старий build-кеш прибираю. Невживані образи з тегами й томи не чіпаю: docker image prune -a / docker volume prune - на твій розсуд."
+  },
+  {
+   "id": "gitlab",
+   "name": "GitLab",
+   "images": [
+    "GitLab"
+   ],
+   "detect": {
+    "paths": [
+     "/etc/gitlab/gitlab.rb",
+     "/opt/gitlab/bin/gitlab-ctl"
+    ],
+    "containers": [
+     "gitlab/gitlab-(ce|ee)"
+    ]
+   },
+   "data": [
+    "/var/opt/gitlab/git-data",
+    "/var/opt/gitlab/gitlab-rails/shared",
+    "/var/opt/gitlab/postgresql",
+    "/var/opt/gitlab/gitlab-ci"
+   ],
+   "logs": [
+    "/var/log/gitlab/*/*.log"
+   ],
+   "caches": [],
+   "backups": [
+    "/var/opt/gitlab/backups"
+   ],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть репозиторії (git-data), артефакти CI та LFS (gitlab-rails/shared), реєстр контейнерів і бекапи (/var/opt/gitlab/backups - задай gitlab_rails['backup_keep_time']). Артефакти обмежуються терміном зберігання в налаштуваннях CI/CD; реєстр - політиками очищення."
+  },
+  {
+   "id": "gitea",
+   "name": "Gitea",
+   "images": [
+    "Gitea"
+   ],
+   "detect": {
+    "paths": [
+     "/etc/gitea/app.ini",
+     "/var/lib/gitea"
+    ],
+    "units": [
+     "gitea.service"
+    ],
+    "containers": [
+     "gitea/gitea"
+    ],
+    "bins": [
+     "gitea"
+    ]
+   },
+   "data": [
+    "/var/lib/gitea/data",
+    "/var/lib/gitea/gitea-repositories",
+    "/home/git/gitea-repositories"
+   ],
+   "logs": [
+    "/var/lib/gitea/log/*.log",
+    "/var/log/gitea/*.log"
+   ],
+   "caches": [],
+   "backups": [
+    "/var/lib/gitea/gitea-dump-*.zip",
+    "/root/gitea-dump-*.zip"
+   ],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть репозиторії, LFS, вкладення, пакети й артефакти Actions. Старі архіви репозиторіїв і артефакти чистяться cron-завданнями Gitea (Site Administration -> Maintenance)."
+  },
+  {
+   "id": "nodejs",
+   "name": "Node.js",
+   "images": [
+    "Node.js"
+   ],
+   "detect": {
+    "bins": [
+     "node",
+     "pm2"
+    ],
+    "paths": [
+     "/root/.pm2",
+     "/home/*/.pm2"
+    ]
+   },
+   "data": [],
+   "logs": [
+    "/root/.pm2/logs/*.log",
+    "/home/*/.pm2/logs/*.log",
+    "/root/.npm/_logs/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": false,
+   "advice": "Логи PM2 (~/.pm2/logs) самі не ротуються - я додаю їх у logrotate (або постав pm2-logrotate). Кеш npm (~/.npm/_cacache) чищу за віком."
+  },
+  {
+   "id": "n8n",
+   "name": "n8n",
+   "images": [
+    "n8n"
+   ],
+   "detect": {
+    "paths": [
+     "/root/.n8n",
+     "/home/*/.n8n",
+     "/opt/n8n*"
+    ],
+    "containers": [
+     "n8nio/n8n",
+     "(^|/)n8n(:|$)"
+    ],
+    "bins": [
+     "n8n"
+    ]
+   },
+   "data": [
+    "/root/.n8n",
+    "/home/*/.n8n"
+   ],
+   "logs": [
+    "/root/.n8n/*.log",
+    "/root/.n8n/logs/*.log",
+    "/home/*/.n8n/logs/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Росте база з історією виконань (database.sqlite або Postgres) і бінарні дані виконань. Увімкни очищення: EXECUTIONS_DATA_PRUNE=true, EXECUTIONS_DATA_MAX_AGE=<годин>; для SQLite ще DB_SQLITE_VACUUM_ON_STARTUP=true."
+  },
+  {
+   "id": "cs2",
+   "name": "CS2 (ігровий сервер)",
+   "images": [
+    "CS2"
+   ],
+   "detect": {
+    "paths": [
+     "/home/*/serverfiles/game/csgo",
+     "/home/steam",
+     "/opt/cs2*",
+     "/var/lib/pterodactyl",
+     "/home/*/cs2*"
+    ],
+    "containers": [
+     "cs2",
+     "pterodactyl",
+     "joedwards32/cs2"
+    ]
+   },
+   "data": [
+    "/var/lib/pterodactyl/volumes"
+   ],
+   "logs": [
+    "/home/*/log/*/*.log",
+    "/home/*/serverfiles/game/csgo/logs/*.log",
+    "/home/*/log/console/*.log",
+    "/var/log/pterodactyl/*.log"
+   ],
+   "caches": [
+    {
+     "path": "/home/*/serverfiles/game/csgo/logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/home/*/log",
+     "max_age_days": 30
+    },
+    {
+     "path": "/home/*/Steam/logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/home/*/.steam/steam/logs",
+     "max_age_days": 30
+    }
+   ],
+   "backups": [
+    "/home/*/backups",
+    "/var/lib/pterodactyl/backups"
+   ],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Сама гра займає десятки ГБ і росте з кожним оновленням - це нормально. Додатково ростуть логи сервера, демо-записи (*.dem) і завантажені карти Workshop."
+  },
+  {
+   "id": "minecraft",
+   "name": "Minecraft (Crafty Controller)",
+   "images": [
+    "Minecraft"
+   ],
+   "detect": {
+    "paths": [
+     "/var/opt/minecraft/crafty",
+     "/opt/crafty*",
+     "/opt/minecraft*"
+    ],
+    "units": [
+     "crafty.service"
+    ],
+    "containers": [
+     "crafty",
+     "itzg/minecraft-server"
+    ]
+   },
+   "data": [
+    "/var/opt/minecraft/crafty/crafty-4/servers",
+    "/var/opt/minecraft/server",
+    "/opt/crafty*/servers",
+    "/opt/minecraft*"
+   ],
+   "logs": [
+    "/var/opt/minecraft/crafty/crafty-4/logs/*.log",
+    "/opt/crafty*/logs/*.log"
+   ],
+   "caches": [
+    {
+     "path": "/var/opt/minecraft/crafty/crafty-4/servers/*/logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/opt/crafty*/servers/*/logs",
+     "max_age_days": 30
+    },
+    {
+     "path": "/var/opt/minecraft/crafty/crafty-4/servers/*/crash-reports",
+     "max_age_days": 30
+    }
+   ],
+   "backups": [
+    "/var/opt/minecraft/crafty/crafty-4/backups",
+    "/opt/crafty*/backups"
+   ],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть світи (servers/*/world*) - тим швидше, чим далі гравці розходяться по карті, - і бекапи Crafty: перевір, скільки копій він зберігає. Старі архівовані логи гри (servers/*/logs/*.log.gz) і crash-reports я прибираю за віком."
+  },
+  {
+   "id": "matomo",
+   "name": "Matomo",
+   "images": [
+    "Matomo"
+   ],
+   "detect": {
+    "paths": [
+     "/var/www/html/matomo.php",
+     "/var/www/*/matomo.php",
+     "/var/www/*/public_html/matomo.php",
+     "/var/www/*/htdocs/matomo.php",
+     "/srv/www/*/matomo.php",
+     "/var/www/vhosts/*/httpdocs/matomo.php",
+     "/www/wwwroot/*/matomo.php",
+     "/var/www/html/matomo/matomo.php",
+     "/var/www/*/matomo/matomo.php",
+     "/var/www/*/public_html/matomo/matomo.php",
+     "/var/www/*/htdocs/matomo/matomo.php",
+     "/srv/www/*/matomo/matomo.php",
+     "/var/www/vhosts/*/httpdocs/matomo/matomo.php",
+     "/www/wwwroot/*/matomo/matomo.php"
+    ],
+    "containers": [
+     "(^|/)matomo(:|$)"
+    ]
+   },
+   "data": [
+    "/var/lib/mysql"
+   ],
+   "logs": [
+    "/var/www/html/tmp/logs/*.log",
+    "/var/www/*/tmp/logs/*.log",
+    "/var/www/*/public_html/tmp/logs/*.log",
+    "/var/www/*/htdocs/tmp/logs/*.log",
+    "/srv/www/*/tmp/logs/*.log",
+    "/var/www/vhosts/*/httpdocs/tmp/logs/*.log",
+    "/www/wwwroot/*/tmp/logs/*.log",
+    "/var/www/html/matomo/tmp/logs/*.log",
+    "/var/www/*/matomo/tmp/logs/*.log",
+    "/var/www/*/public_html/matomo/tmp/logs/*.log",
+    "/var/www/*/htdocs/matomo/tmp/logs/*.log",
+    "/srv/www/*/matomo/tmp/logs/*.log",
+    "/var/www/vhosts/*/httpdocs/matomo/tmp/logs/*.log",
+    "/www/wwwroot/*/matomo/tmp/logs/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Майже все місце - у БД: сирі дані відвідувань (matomo_log_*) і архіви звітів (matomo_archive_*). Увімкни видалення старих сирих даних (Administration -> Privacy -> Anonymize data -> Regularly delete old raw data) і запускай ./console core:purge-old-archive-data all."
+  },
+  {
+   "id": "metabase",
+   "name": "Metabase",
+   "images": [
+    "Metabase"
+   ],
+   "detect": {
+    "paths": [
+     "/opt/metabase*",
+     "/var/lib/metabase"
+    ],
+    "units": [
+     "metabase.service"
+    ],
+    "containers": [
+     "metabase/metabase"
+    ]
+   },
+   "data": [
+    "/opt/metabase*/metabase.db*",
+    "/var/lib/metabase"
+   ],
+   "logs": [
+    "/opt/metabase*/*.log",
+    "/opt/metabase*/logs/*.log",
+    "/var/log/metabase*.log",
+    "/var/log/metabase/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Власна база Metabase невелика; росте таблиця query_execution (історія запитів) і логи. Якщо використовується вбудована H2 - варто перейти на Postgres."
+  },
+  {
+   "id": "uptime-kuma",
+   "name": "Uptime Kuma",
+   "images": [
+    "Uptime Kuma"
+   ],
+   "detect": {
+    "paths": [
+     "/opt/uptime-kuma",
+     "/app/data/kuma.db",
+     "/var/lib/docker/volumes/uptime-kuma"
+    ],
+    "containers": [
+     "louislam/uptime-kuma"
+    ]
+   },
+   "data": [
+    "/opt/uptime-kuma/data",
+    "/var/lib/docker/volumes/uptime-kuma"
+   ],
+   "logs": [
+    "/root/.pm2/logs/*.log",
+    "/opt/uptime-kuma/data/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Росте база kuma.db з історією перевірок. Зменш Settings -> Monitor History -> Keep monitor history data і натисни Shrink Database."
+  },
+  {
+   "id": "zabbix",
+   "name": "Zabbix",
+   "images": [
+    "Zabbix"
+   ],
+   "detect": {
+    "paths": [
+     "/etc/zabbix/zabbix_server.conf"
+    ],
+    "units": [
+     "zabbix-server.service"
+    ],
+    "containers": [
+     "zabbix/"
+    ]
+   },
+   "data": [
+    "/var/lib/mysql",
+    "/var/lib/postgresql"
+   ],
+   "logs": [
+    "/var/log/zabbix/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Місце займає БД: таблиці history* і trends*. Терміни зберігання задаються в елементах даних і в Administration -> Housekeeping; після скорочення термінів місце повертається лише після OPTIMIZE TABLE / VACUUM FULL."
+  },
+  {
+   "id": "plesk",
+   "name": "Plesk",
+   "images": [
+    "Plesk"
+   ],
+   "detect": {
+    "paths": [
+     "/usr/local/psa/version",
+     "/opt/psa/version"
+    ],
+    "bins": [
+     "plesk"
+    ]
+   },
+   "data": [
+    "/var/www/vhosts",
+    "/var/qmail/mailnames",
+    "/var/lib/mysql",
+    "/var/lib/mariadb"
+   ],
+   "logs": [
+    "/var/log/plesk/*.log",
+    "/var/log/sw-cp-server/*log",
+    "/var/log/plesk-php*-fpm/*.log"
+   ],
+   "caches": [
+    {
+     "path": "/usr/local/psa/PMM/tmp",
+     "max_age_days": 7
+    },
+    {
+     "path": "/usr/local/psa/tmp",
+     "max_age_days": 7
+    },
+    {
+     "path": "/var/lib/psa/dumps/tmp",
+     "max_age_days": 7
+    }
+   ],
+   "backups": [
+    "/var/lib/psa/dumps"
+   ],
+   "cleanup": [],
+   "container_data": false,
+   "advice": "Ростуть сайти клієнтів (/var/www/vhosts, зокрема їхні логи в vhosts/system/*/logs - ротація задається в Plesk для кожного домену), пошта (/var/qmail/mailnames) і бекапи (/var/lib/psa/dumps - обмеж кількість копій у Backup Manager). Подивитись розподіл: plesk bin diskspace або розширення Diskspace Usage Viewer."
+  },
+  {
+   "id": "aapanel",
+   "name": "aaPanel",
+   "images": [
+    "aaPanel"
+   ],
+   "detect": {
+    "paths": [
+     "/www/server/panel"
+    ],
+    "bins": [
+     "bt"
+    ]
+   },
+   "data": [
+    "/www/wwwroot",
+    "/www/server/data",
+    "/www/vmail"
+   ],
+   "logs": [
+    "/www/wwwlogs/*.log",
+    "/www/server/panel/logs/*.log",
+    "/www/server/php/*/var/log/*.log",
+    "/www/wwwlogs/*/*.log"
+   ],
+   "caches": [],
+   "backups": [
+    "/www/backup",
+    "/www/Recycle_bin"
+   ],
+   "cleanup": [],
+   "container_data": false,
+   "advice": "Ростуть сайти (/www/wwwroot), бази (/www/server/data), логи веб-сервера (/www/wwwlogs - у aaPanel вони не ротуються, доки не ввімкнути Cron -> Log cutting; я додаю їх у logrotate), бекапи (/www/backup) і кошик панелі (/www/Recycle_bin)."
+  },
+  {
+   "id": "immich",
+   "name": "Immich",
+   "images": [
+    "Immich"
+   ],
+   "detect": {
+    "paths": [
+     "/opt/immich*",
+     "/root/immich-app",
+     "/home/*/immich-app"
+    ],
+    "containers": [
+     "immich-app/immich-server",
+     "immich-server"
+    ]
+   },
+   "data": [
+    "/opt/immich*/library",
+    "/opt/immich*/upload",
+    "/root/immich-app/library",
+    "/home/*/immich-app/library",
+    "/opt/immich*/postgres",
+    "/root/immich-app/postgres"
+   ],
+   "logs": [],
+   "caches": [],
+   "backups": [
+    "/opt/immich*/library/backups",
+    "/root/immich-app/library/backups"
+   ],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Ростуть фото й відео користувачів (library/upload) плюс похідні від них: мініатюри (thumbs) і перекодоване відео (encoded-video) - це ще 10-20% зверху. Обмеження - квоти користувачів; у кошику Immich файли лежать 30 днів."
+  },
+  {
+   "id": "vaultwarden",
+   "name": "Vaultwarden",
+   "images": [
+    "Vaultwarden"
+   ],
+   "detect": {
+    "paths": [
+     "/opt/vaultwarden",
+     "/var/lib/vaultwarden",
+     "/var/lib/docker/volumes/vaultwarden*"
+    ],
+    "units": [
+     "vaultwarden.service"
+    ],
+    "containers": [
+     "vaultwarden/server"
+    ]
+   },
+   "data": [
+    "/opt/vaultwarden/data",
+    "/var/lib/vaultwarden",
+    "/var/lib/docker/volumes/vaultwarden*"
+   ],
+   "logs": [
+    "/opt/vaultwarden/*.log",
+    "/var/log/vaultwarden*.log",
+    "/var/lib/vaultwarden/*.log"
+   ],
+   "caches": [],
+   "backups": [],
+   "cleanup": [],
+   "container_data": true,
+   "advice": "Vaultwarden займає мало; рости можуть вкладення (attachments) і файли Send (sends)."
+  }
+ ]
+}
