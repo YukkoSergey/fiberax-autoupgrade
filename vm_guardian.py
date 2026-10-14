@@ -16,7 +16,7 @@ vm-guardian - демон, що стежить за ресурсами цієї �
   Саме збільшення (з перезавантаженням) виконується лише в годину найменшого навантаження.
 
 Тільки стандартна бібліотека. Запуск: vm_guardian.py run | setup [--stop EUR] [--warn EUR] [--grow шляхи] [--mail адреса]
-        | allow-growth <тека> | apps | status | diagnose | resume | test-mail
+        | allow-growth <тека> | hold|release <disk_gb|memory_mb|cores> | apps | status | diagnose | resume | test-mail
 """
 import datetime as dt
 import fnmatch
@@ -102,6 +102,7 @@ DEFAULTS = {
     "journal_max_mb": 300,
     # дані, під які можна автоматично докуповувати диск (glob); задає власник у setup / allow-growth
     "grow_paths": [],
+    "hold": [],                             # види ресурсів (disk_gb, memory_mb, cores), які лише спостерігаємо: лист без збільшення
     "apps_file": None,                      # профілі відомого софту; None -> apps.json поруч зі скриптом
     "du_interval_h": 6,
     "du_depth": 6,
@@ -134,6 +135,18 @@ def run(cmd, timeout=600, **kw):
         return p.returncode, p.stdout
     except (OSError, subprocess.TimeoutExpired) as e:
         return 127, str(e)
+
+
+class daemon_paused:
+    """Демон тримає стан у пам'яті й перезаписує файл, тож зміни з CLI робимо, поки він зупинений."""
+    def __enter__(self):
+        self.was = run(["systemctl", "is-active", "--quiet", "vm-guardian"])[0] == 0
+        if self.was:
+            run(["systemctl", "stop", "vm-guardian"])
+
+    def __exit__(self, *exc):
+        if self.was:
+            run(["systemctl", "start", "vm-guardian"])
 
 
 def fmt_size(b):
@@ -543,6 +556,12 @@ class Guardian:
             self.mail(f"Не можу перевірити збільшення: {KIND_UA[kind]}",
                       f"{reason}\n\nЗапит до Fiberax API не вдався: {e}\nСпробую ще раз пізніше.\n\n{details}",
                       key=f"apierr-{kind}")
+            return
+        if kind in self.cfg["hold"]:
+            self.mail(f"Не вистачає ресурсу: {KIND_UA[kind]} — збільшення притримано",
+                      f"{reason}\n\nАвтоматичне збільшення цього ресурсу притримано (hold у конфігу), тому я його не "
+                      f"додаю, лише повідомляю. Дозволити знову:  vm-guardian release {kind}\n\n{details}",
+                      key=f"hold-{kind}")
             return
         if info["prices"].get("pricing_mode") != "sliders":
             self.mail(f"Не вистачає ресурсу: {KIND_UA[kind]} — потрібен ручний апгрейд",
@@ -1599,9 +1618,29 @@ def main():
             print(f"  {p}  ({why}, файли старші за {age} днів)")
         g.cfg["disk_used_pct"] = 0                          # вдати, що диска мало
         print(g.diagnose_disk())
+    elif cmd in ("hold", "release"):
+        kind = sys.argv[2] if len(sys.argv) > 2 else ""
+        if kind not in KIND_UA:
+            sys.exit(f"вкажи вид ресурсу: {', '.join(KIND_UA)}")
+        with daemon_paused():
+            g = Guardian()
+            with open(CONFIG_PATH) as f:
+                conf = json.load(f)
+            conf["hold"] = [k for k in conf.get("hold", []) if k != kind] + ([kind] if cmd == "hold" else [])
+            with open(CONFIG_PATH + ".tmp", "w") as f:
+                json.dump(conf, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+            os.chmod(CONFIG_PATH + ".tmp", 0o600)
+            os.replace(CONFIG_PATH + ".tmp", CONFIG_PATH)
+            dropped = g.state["pending"].pop(kind, None) if cmd == "hold" and not g.state["pending"].get(kind, {}).get("target") else None
+            g.save()
+        print(f"{kind}: " + ("притримано - лише листи, без збільшення" + ("; заплановане збільшення скасовано" if dropped else "")
+                             if cmd == "hold" else "автозбільшення знову дозволено"))
     elif cmd == "resume":
-        g.state.update(halted=False, halt_reason="")
-        g.save()
+        with daemon_paused():
+            g = Guardian()
+            g.state.update(halted=False, halt_reason="")
+            g.save()
         print("Автозбільшення знову дозволено (якщо витрати все ще впираються в стелю - зупиниться знову).")
     elif cmd == "test-mail":
         ok = g.mail("тестовий лист", "Перевірка доставки пошти від vm-guardian.")
