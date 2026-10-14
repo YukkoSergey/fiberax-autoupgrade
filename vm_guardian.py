@@ -398,7 +398,9 @@ class Guardian:
 
     @staticmethod
     def top_procs(sort):
-        rc, out = run(["ps", "-eo", "pid,pcpu,rss,comm,args", "--sort=-" + sort, "--no-headers"])
+        rc, out = run(["ps", "-eo", "pid,pcpu,rss,comm,args", "--sort=-" + sort, "--no-headers"], timeout=120)
+        if rc:                                  # під сильним тиском пам'яті ps може не встигнути
+            return f"  (список процесів недоступний: {out.strip()[-120:]})"
         rows = []
         for line in out.splitlines()[:8]:
             p = line.split(None, 4)
@@ -725,6 +727,16 @@ class Guardian:
         hour, _ = self.quiet_hour()
         if utcnow().hour != hour and not started:
             return
+        # місце могли звільнити вручну, поки чекали тихої години - тоді диск не докуповуємо
+        # (пам'ять і CPU так не перевіряю: вночі навантаження завжди нижче, ніж тоді, коли його виміряли)
+        p = st["pending"].get("disk_gb")
+        if p and not p.get("target") and not self.disk_low():
+            d = self.disk()
+            del st["pending"]["disk_gb"]
+            self.save()
+            log(f"disk_gb: місця вже достатньо (зайнято {d['used_pct']:.0f}%, вільно {fmt_size(d['free'])}), збільшення скасовано")
+            if not st["pending"]:
+                return
         if self.cfg["dry_run"]:
             log("dry_run: would apply", st["pending"])
             return
