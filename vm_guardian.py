@@ -746,6 +746,14 @@ class Guardian:
         hour, _ = self.quiet_hour()
         if utcnow().hour != hour and not started:
             return
+        # кожна зміна - це перезапуск ВМ: за ніч виконуємо лише один набір змін (те, що стояло в черзі на
+        # початку тихої години); те, що додалося в чергу вже після перезапусків, чекає наступної ночі
+        batch = st.get("batch") or {}
+        if time.time() - batch.get("ts", 0) > 3600:
+            if not started and st["resizes"] and time.time() - st["resizes"][-1]["ts"] < 6 * 3600:
+                return
+            batch = st["batch"] = {"ts": time.time(), "kinds": sorted(st["pending"])}
+            self.save()
         # місце могли звільнити вручну, поки чекали тихої години - тоді диск не докуповуємо
         # (пам'ять і CPU так не перевіряю: вночі навантаження завжди нижче, ніж тоді, коли його виміряли)
         p = st["pending"].get("disk_gb")
@@ -768,7 +776,7 @@ class Guardian:
         srv = info["server"]
         for kind in ("disk_gb", "memory_mb", "cores"):      # один вид зміни на запит
             p = st["pending"].get(kind)
-            if not p:
+            if not p or (kind not in batch["kinds"] and not p.get("target")):
                 continue
             new_value = p.get("target") or srv[kind] + p["step"]
             old_value = new_value - p["step"]
@@ -794,6 +802,8 @@ class Guardian:
                 self.mail(f"Збільшення НЕ вдалося: {kind} -> {new_value}", f"{p['reason']}\n\nFiberax API: {e}")
                 continue
             del st["pending"][kind]
+            if kind in batch["kinds"]:
+                batch["kinds"].remove(kind)
             st["added_eur"] += p["delta_eur"]
             rec = {"ts": time.time(), "kind": kind, "old": old_value, "new": new_value, "delta_eur": p["delta_eur"],
                    "guest_mem_mb": p.get("guest_mem_mb"),
